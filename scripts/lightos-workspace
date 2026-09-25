@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+command -v hyprctl >/dev/null || { echo 'Hyprland is not running (hyprctl unavailable).' >&2; exit 1; }
+case "${1:-help}" in
+  list) hyprctl -j workspaces | jq -r 'sort_by(.id)[] | "\(.id)\t\(.name)\t\(.windows) windows"' ;;
+  focus) [[ -n "${2:-}" ]] || { echo 'Usage: lightos-workspace focus ID' >&2; exit 2; }; hyprctl dispatch workspace "$2" >/dev/null ;;
+  move) [[ -n "${2:-}" ]] || { echo 'Usage: lightos-workspace move ID' >&2; exit 2; }; hyprctl dispatch movetoworkspace "$2" >/dev/null ;;
+  pick)
+    command -v wofi >/dev/null || { echo 'Install wofi to use the picker.' >&2; exit 1; }
+    choice="$(hyprctl -j workspaces | jq -r 'sort_by(.id)[] | "\(.id): \(.name) (\(.windows) windows)"' | wofi --dmenu --prompt 'Workspace')"
+    [[ -n "$choice" ]] || exit 0
+    hyprctl dispatch workspace "${choice%%:*}" >/dev/null
+    ;;
+  help|-h|--help) echo 'Usage: lightos-workspace {list|focus ID|move ID|pick}' ;;
+  *) echo "Unknown action: $1" >&2; exit 2 ;;
+esac
